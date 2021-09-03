@@ -7,7 +7,7 @@ import csv
 
 
 class Tracker(object):
-    def __init__(self, video='NA', preview=True, hue_min=1, hue_max=342, sat_min=10, sat_max=100,
+    def __init__(self, video='NA', csvName=None ,preview=True, hue_min=1, hue_max=342, sat_min=10, sat_max=100,
                  val_min=250, val_max=256, display_thresholds=False):
         self.video = video
         self.preview = True
@@ -33,6 +33,7 @@ class Tracker(object):
         self.writer = None
         self.csvFile = None
         self.frameCount = None
+        self.csvName = csvName
 
     def setupVideo(self):
         self.capture = cv2.VideoCapture(self.video)
@@ -47,11 +48,11 @@ class Tracker(object):
         return(self.capture)
 
     def setupCSV(self):
-        self.csvFile = open("test3.csv", 'w')
+        self.csvFile = open(self.csvName, 'w')
         self.writer = csv.writer(self.csvFile)
-        self.writer.writerow('File,' + self.video)
-        self.writer.writerow('Height,' + str(self.videoHeight) + ',Width,' + str(self.videoWidth))
-        self.writer.writerow('Frames,' + str(self.frameCount) + ",FPS," + str(self.videoFPS))
+        self.writer.writerow(['File:' , self.video])
+        self.writer.writerow(['Height:' , str(self.videoHeight) , 'Width:' , str(self.videoWidth)])
+        self.writer.writerow(['Frames:' , str(self.frameCount) , "FPS:" , str(self.videoFPS)])
 
 
     def writeCSV(self, data):
@@ -77,10 +78,8 @@ class Tracker(object):
         # self.setupWindows()
         self.setupVideo()
         self.setupCSV()
-        count = 0
         while(self.capture.isOpened()):
             ret, frame = self.capture.read()
-            count = count + 1
             if(ret == True):
                 # cv2.imshow('Frame!', frame)
                 # blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -160,10 +159,16 @@ if __name__ == '__main__':
                         default=255,
                         type=int,
                         help='Value Maximum Threshold')
+    parser.add_argument('-c', '--csv',
+                        default="Track_Results.csv",
+                        type=str,
+                        help='CSV Output File Name')
 
     params = parser.parse_args()
     Track = Tracker(
-        video = params.file
+        video = params.file,
+        csvName = params.csv
+
     )
     Track.setupVideo()
     Track.run()
