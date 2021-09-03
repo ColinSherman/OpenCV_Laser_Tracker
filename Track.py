@@ -32,6 +32,7 @@ class Tracker(object):
         self.videoFPS = 30
         self.writer = None
         self.csvFile = None
+        self.frameCount = None
 
     def setupVideo(self):
         self.capture = cv2.VideoCapture(self.video)
@@ -46,8 +47,12 @@ class Tracker(object):
         return(self.capture)
 
     def setupCSV(self):
-        self.csvFile = open("testcsv", 'w')
+        self.csvFile = open("test3.csv", 'w')
         self.writer = csv.writer(self.csvFile)
+        self.writer.writerow('File,' + self.video)
+        self.writer.writerow('Height,' + str(self.videoHeight) + ',Width,' + str(self.videoWidth))
+        self.writer.writerow('Frames,' + str(self.frameCount) + ",FPS," + str(self.videoFPS))
+
 
     def writeCSV(self, data):
         self.writer.writerow(data)
@@ -72,8 +77,10 @@ class Tracker(object):
         # self.setupWindows()
         self.setupVideo()
         self.setupCSV()
+        count = 0
         while(self.capture.isOpened()):
             ret, frame = self.capture.read()
+            count = count + 1
             if(ret == True):
                 # cv2.imshow('Frame!', frame)
                 # blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -103,7 +110,7 @@ class Tracker(object):
                     M = cv2.moments(c)
                     center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 self.writeCSV(center)
-                cv2.imshow('Frame!', frame)
+                cv2.imshow('Frame!', mask)
                 key = cv2.waitKey(1)
                 if key == ord('q'):
                     break
