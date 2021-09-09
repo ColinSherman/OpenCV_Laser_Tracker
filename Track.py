@@ -53,7 +53,11 @@ class Tracker(object):
         self.writer.writerow(['File:' , self.video])
         self.writer.writerow(['Height:' , str(self.videoHeight) , 'Width:' , str(self.videoWidth)])
         self.writer.writerow(['Frames:' , str(self.frameCount) , "FPS:" , str(self.videoFPS)])
+        self.writer.writerow(['X','Y'])
 
+    def calibrateCamera(self, frame):
+        found, corners = cv2.findChessboardCorners(frame, (6,9))
+        print(found, corners)
 
     def writeCSV(self, data):
         self.writer.writerow(data)
@@ -71,27 +75,26 @@ class Tracker(object):
         self.createWindow('LaserPointer', 0, 0)
         self.createWindow('RGB_VideoFrame', 10 + self.videoWidth, 0)
 
-    def findLaser(self, frame):
-        print("here")
-
     def run(self):
         # self.setupWindows()
         self.setupVideo()
         self.setupCSV()
+        count = 0
         while(self.capture.isOpened()):
             ret, frame = self.capture.read()
             if(ret == True):
-                # cv2.imshow('Frame!', frame)
-                # blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+                count = count + 1
+                if count == 10:
+                    self.calibrateCamera(frame)
                 hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
                 # lower mask
-                lower_red = np.array([0,10,80])
+                lower_red = np.array([0,40,100])
                 upper_red = np.array([10,255,255])
                 mask0 = cv2.inRange(hsv,lower_red,upper_red)
 
                 # upper mask
-                lower_red = np.array([170,10,80])
+                lower_red = np.array([170,40,100])
                 upper_red = np.array([180,255,255])
                 mask1 = cv2.inRange(hsv,lower_red,upper_red)
 
@@ -109,25 +112,13 @@ class Tracker(object):
                     M = cv2.moments(c)
                     center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 self.writeCSV(center)
-                cv2.imshow('Frame!', mask)
+                cv2.imshow('Mask', mask)
                 key = cv2.waitKey(1)
                 if key == ord('q'):
                     break
             else:
                 break
         self.closeCSV()
-        # while True:
-        #     ret, frame = self.capture.read()
-        #     if not ret:  # no image captured... end the processing
-        #         sys.stderr.write("Could not read camera frame. Quitting\n")
-        #         sys.exit(1)
-        #     cv2.imshow('mask',frame)
-        #     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-        #     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-        #     mask = cv2.inRange(hsv,self.redLower,self.redUpper)
-        #     mask = cv2.erode(mask, None, iterations=2)                          # should destroy the smaller islands
-        #     mask = cv2.dilate(mask, None, iterations=2)                         # should grow around the laser center
-        #     cv2.imshow('mask',frame)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Laser Tracker')
@@ -172,34 +163,3 @@ if __name__ == '__main__':
     )
     Track.setupVideo()
     Track.run()
-
-    # print(params)
-    # Track.run()
-
-
-    # this was my test code:
-
-    # vidCapture = cv2.VideoCapture('Videos/Test.mp4')
-    #
-    # if(vidCapture.isOpened() == False):
-    #     print("error opening video file")
-    # else:
-    #     fps = vidCapture.get(5)     # 5 is the index holding the frame rate information
-    #     print('Frames per second : ', fps,'FPS')
-    #
-    #     frameCount = vidCapture.get(7)    # 7 is the index for fram count
-    #     print('Frame count : ', frameCount)
-    #
-    # while(vidCapture.isOpened()):
-    #     ret, frame = vidCapture.read()
-    #     if(ret == True):
-    #         cv2.imshow('Frame!', frame)
-    #
-    #         key = cv2.waitKey(1)
-    #         if key == ord('q'):
-    #             break
-    #     else:
-    #         break
-    #
-    # vidCapture.release()
-    # cv2.destroyAllWindows()
