@@ -129,5 +129,4 @@ dmypy.json
 .pyre/
 
 # User Defined
-*.mp4
-*.csv
+#.mp4

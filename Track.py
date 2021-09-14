@@ -8,7 +8,7 @@ import csv
 
 class Tracker(object):
     def __init__(self, video='NA', csvName=None ,preview=True, hue_min=1, hue_max=342, sat_min=10, sat_max=100,
-                 val_min=250, val_max=256, display_thresholds=False, t0=1):
+                 val_min=250, val_max=256, display_thresholds=False, t0=1, csv2Name=None):
         self.video = video
         self.preview = True
         self.hue_min = hue_min
@@ -38,6 +38,7 @@ class Tracker(object):
         self.corners = None
         self.rawData = None
         self.calcData = None
+        self.csv2Name = csv2Name
 
     def setupVideo(self):
         self.capture = cv2.VideoCapture(self.video)
@@ -54,7 +55,7 @@ class Tracker(object):
     def setupCSV(self):
         self.csvFile = open(self.csvName, 'w')
         self.writer = csv.writer(self.csvFile)
-        self.writer.writerow(['File:' , self.video])
+        self.writer.writerow(['File:' , self.video, "t0:", self.t0])
         self.writer.writerow(['Height:' , str(self.videoHeight) , 'Width:' , str(self.videoWidth)])
         self.writer.writerow(['Frames:' , str(self.frameCount) , "FPS:" , str(self.videoFPS)])
         self.writer.writerow(['X','Y'])
@@ -94,7 +95,7 @@ class Tracker(object):
         xscale = 22.5/(self.corners[1,0][0]-self.corners[0,0][0]) #pixels per mm
         yscale = 22.5/(self.corners[6,0][1]-self.corners[0,0][1]) #pixels per mm
         calData = np.column_stack((xscale*(self.rawData[:,0] - xzero ),yscale*( self.rawData[:,1] - yzero)))
-        print (calData)
+        np.savetxt(self.csv2Name, calData, delimiter = ',')
 
 
     def run(self):
@@ -187,12 +188,17 @@ if __name__ == '__main__':
                         default=1,
                         type=int,
                         help='Time stamp of the start of the test (int)')
+    parser.add_argument('-c2', '--csv2',
+                        default="cal_Track_Results.csv",
+                        type=str,
+                        help='calibrated CSV Output File Name')
 
     params = parser.parse_args()
     Track = Tracker(
         video = params.file,
         csvName = params.csv,
-        t0 = params.time0
+        t0 = params.time0,
+        csv2Name = params.csv2
 
     )
     Track.setupVideo()
