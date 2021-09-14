@@ -8,7 +8,7 @@ import csv
 
 class Tracker(object):
     def __init__(self, video='NA', csvName=None ,preview=True, hue_min=1, hue_max=342, sat_min=10, sat_max=100,
-                 val_min=250, val_max=256, display_thresholds=False):
+                 val_min=250, val_max=256, display_thresholds=False, t0=1):
         self.video = video
         self.preview = True
         self.hue_min = hue_min
@@ -34,6 +34,10 @@ class Tracker(object):
         self.csvFile = None
         self.frameCount = None
         self.csvName = csvName
+        self.t0 = t0
+        self.corners = None
+        self.rawData = None
+        self.calcData = None
 
     def setupVideo(self):
         self.capture = cv2.VideoCapture(self.video)
@@ -57,7 +61,11 @@ class Tracker(object):
 
     def calibrateCamera(self, frame):
         found, corners = cv2.findChessboardCorners(frame, (6,9))
-        print(found, corners)
+        if found:
+            self.corners = corners
+        else:
+            print("chessboard not found")
+
 
     def writeCSV(self, data):
         self.writer.writerow(data)
@@ -69,22 +77,37 @@ class Tracker(object):
         cv2.namedWindow(name)
         cv2.moveWindow(name, x, y)
 
+    def initArrays(self):
+        # self.rawData = np.zeros(shape = (2,int(self.frameCount)))
+        # self.calcData = np.zeros(shape = (2,int(self.frameCount)))
+        self.rawData = np.zeros((0,2))
+
     def setupWindows(self):
         sys.stdout.write("Using OpenCV version: {0}\n".format(cv2.__version__))
 
         self.createWindow('LaserPointer', 0, 0)
         self.createWindow('RGB_VideoFrame', 10 + self.videoWidth, 0)
 
+    def calData(self):
+        xzero = self.corners[0,0][0]
+        yzero = self.corners[0,0][1]
+        xscale = 22.5/(self.corners[1,0][0]-self.corners[0,0][0]) #pixels per mm
+        yscale = 22.5/(self.corners[6,0][1]-self.corners[0,0][1]) #pixels per mm
+        calData = np.column_stack((xscale*(self.rawData[:,0] - xzero ),yscale*( self.rawData[:,1] - yzero)))
+        print (calData)
+
+
     def run(self):
         # self.setupWindows()
         self.setupVideo()
         self.setupCSV()
+        self.initArrays()
         count = 0
         while(self.capture.isOpened()):
             ret, frame = self.capture.read()
             if(ret == True):
                 count = count + 1
-                if count == 10:
+                if count == self.t0:
                     self.calibrateCamera(frame)
                 hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -110,14 +133,20 @@ class Tracker(object):
                     c = max(cnts, key=cv2.contourArea)
                     ((x, y), radius) = cv2.minEnclosingCircle(c)
                     M = cv2.moments(c)
-                    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                    center = ((M["m10"] / M["m00"]), (M["m01"] / M["m00"]))
                 self.writeCSV(center)
+                new = [(M["m10"] / M["m00"]), (M["m01"] / M["m00"])]
+                self.rawData = np.vstack([self.rawData , new])
                 cv2.imshow('Mask', mask)
                 key = cv2.waitKey(1)
                 if key == ord('q'):
                     break
             else:
                 break
+        # print(self.rawData)
+        # print(self.corners[1,0][1])
+        # print(self.corners)
+        self.calData()
         self.closeCSV()
 
 if __name__ == '__main__':
@@ -154,11 +183,16 @@ if __name__ == '__main__':
                         default="Track_Results.csv",
                         type=str,
                         help='CSV Output File Name')
+    parser.add_argument('-t0', '--time0',
+                        default=1,
+                        type=int,
+                        help='Time stamp of the start of the test (int)')
 
     params = parser.parse_args()
     Track = Tracker(
         video = params.file,
-        csvName = params.csv
+        csvName = params.csv,
+        t0 = params.time0
 
     )
     Track.setupVideo()
